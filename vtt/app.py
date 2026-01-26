@@ -138,11 +138,13 @@ class VTTApp(rumps.App):
         self.title = "⏳"
         self._update_status("Transcribing...")
         
-        audio = self._audio_recorder.stop_recording()
-        
         # Transcribe in background
         def process():
             try:
+                # Stop recording in background thread to prevent blocking main loop
+                print(">>> Stopping audio stream...")
+                audio = self._audio_recorder.stop_recording()
+                
                 if audio.size > 0:
                     print(f">>> Transcribing {len(audio)} samples...")
                     text = self._transcriber.transcribe(audio)
