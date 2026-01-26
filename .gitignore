@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+.env
+
+# Mac
+.DS_Store
+
+# Project Specific
+models/
+build/
+dist/
+*.egg-info/
+*.log
+*.wav
+*.mp3
+text_insert_test_*.txt
+
+# Ignore logs in tmp if created there, but preventing local ones
+litetype.out.log
+litetype.err.log
