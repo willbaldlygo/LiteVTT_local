@@ -13,6 +13,7 @@ from .audio import AudioRecorder
 from .transcriber import Transcriber
 from .hotkeys import create_option_s_handler
 from .text_insert import insert_text
+from AppKit import NSSound
 
 
 class VTTApp(rumps.App):
@@ -24,6 +25,7 @@ class VTTApp(rumps.App):
             title="VTT",
             quit_button=None
         )
+
         
         # Components
         self._audio_recorder = AudioRecorder()
@@ -101,6 +103,12 @@ class VTTApp(rumps.App):
         except Exception as e:
             print(f"Failed to start hotkey listener: {e}")
             self._update_status(f"Hotkey error: {e}")
+
+    def _play_sound(self, sound_name: str):
+        """Play a system sound."""
+        sound = NSSound.soundNamed_(sound_name)
+        if sound:
+            sound.play()
     
     def _on_hotkey_press(self):
         """Called when Option+S is pressed."""
@@ -110,7 +118,8 @@ class VTTApp(rumps.App):
             return
         
         self._is_recording = True
-        self.title = "🔴"
+        self.title = "🔴 REC"
+        self._play_sound("Tink")
         self._update_status("Recording...")
         
         try:
@@ -135,7 +144,8 @@ class VTTApp(rumps.App):
         
         self._is_recording = False
         self._is_processing = True
-        self.title = "⏳"
+        self.title = "⏳ PROC"
+        self._play_sound("Pop")
         self._update_status("Transcribing...")
         
         # Transcribe in background
