@@ -99,7 +99,7 @@ class VTTApp(rumps.App):
                 on_deactivate=self._on_hotkey_release
             )
             self._hotkey_handler.start()
-            self._update_status("Ready - Hold Option+S")
+            self._update_status("Ready - Hold Fn+Ctrl")
         except Exception as e:
             print(f"Failed to start hotkey listener: {e}")
             self._update_status(f"Hotkey error: {e}")
@@ -204,7 +204,7 @@ class VTTApp(rumps.App):
                 self.title = "🎙️"
                 time.sleep(2)
                 if not self._is_recording and not self._is_processing:
-                    self._update_status("Ready - Hold Option+S")
+                    self._update_status("Ready - Hold Fn+Ctrl")
         
         thread = threading.Thread(target=process, daemon=True)
         thread.start()
@@ -228,7 +228,7 @@ def main():
     print("Starting VTT Local...")
     print("=" * 40)
     print("Menu bar icon: VTT (or 🎙️ when ready)")
-    print("Hold Option+S to record, release to transcribe.")
+    print("Hold Fn+Ctrl to record, release to transcribe.")
     print("=" * 40)
     
     app = VTTApp()
