@@ -1,18 +1,17 @@
 #!/bin/bash
 # LiteScribe Launcher
-# Double-click this file to transcribe audio files
 
-PROJECT_DIR="/Users/will/VTT_local"
-cd "$PROJECT_DIR"
+# Move to the script's directory
+cd "$(dirname "$0")"
+
+# Check for virtual environment
+if [ ! -d "venv" ]; then
+    echo "❌ Virtual environment not found."
+    echo "Please run Setup.command first."
+    read -p "Press Enter to exit..."
+    exit 1
+fi
+
+# Activate and run
 source venv/bin/activate
-
-echo "========================================================"
-echo "    LiteScribe - File Transcriber"
-echo "========================================================"
-echo ""
-python litescribe.py
-
-echo ""
-echo "========================================================"
-echo "Done! Press Enter to close this window..."
-read
+python3 litescribe.py

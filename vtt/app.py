@@ -31,22 +31,37 @@ class VTTApp(rumps.App):
         self._audio_recorder = AudioRecorder()
         self._transcriber: Transcriber | None = None
         self._hotkey_handler = None
+        self.config = self._load_config()
         
         # State
         self._is_recording = False
         self._is_processing = False
         self._init_done = False
         
+        # Trigger help text
+        trigger = self.config.get("hotkeys", {}).get("trigger", "Fn+Ctrl")
+        
         # Build menu
         self._status_item = rumps.MenuItem("Status: Starting...")
         self.menu = [
             self._status_item,
             None,
-            rumps.MenuItem("Hotkey: Fn+Ctrl (hold to record)"),
+            rumps.MenuItem(f"Hotkey: {trigger} (hold to record)"),
             None,
             rumps.MenuItem("Quit", callback=self._quit)
         ]
     
+    def _load_config(self):
+        """Load configuration from config.json."""
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r') as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
+
     @rumps.timer(1)
     def _init_timer(self, _):
         """Initialize everything on first timer tick."""
@@ -66,7 +81,7 @@ class VTTApp(rumps.App):
             # Try to load best available model
             models_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
             
-            # Priority list: small.en (accurate) > base.en (balanced) > base (current)
+            # Priority list
             candidates = ["ggml-small.en.bin", "ggml-base.en.bin", "ggml-base.bin"]
             
             model_path = None
@@ -89,20 +104,20 @@ class VTTApp(rumps.App):
             
         except Exception as e:
             self._update_status(f"Error: {str(e)[:30]}")
-            print(f"Error loading model: {e}")
     
     def _setup_hotkeys(self):
         """Initialize hotkeys."""
         try:
+            trigger = self.config.get("hotkeys", {}).get("trigger", "Fn+Ctrl")
             self._hotkey_handler = create_option_s_handler(
                 on_activate=self._on_hotkey_press,
                 on_deactivate=self._on_hotkey_release
             )
             self._hotkey_handler.start()
-            self._update_status("Ready - Hold Fn+Ctrl")
+            self._update_status(f"Ready - Hold {trigger}")
         except Exception as e:
-            print(f"Failed to start hotkey listener: {e}")
-            self._update_status(f"Hotkey error: {e}")
+            self._update_status(f"Hotkey error")
+
 
     def _play_sound(self, sound_name: str):
         """Play a system sound."""

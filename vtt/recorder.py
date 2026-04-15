@@ -6,6 +6,7 @@ Handles recording, trimming, and saving to the dynamic array_main path.
 import os
 import glob
 import time
+import json
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
@@ -19,31 +20,55 @@ class LiteRecorder:
         self._recording = False
         self._audio_buffer = []
         self._stream = None
-        self.base_path = self._find_array_main()
+        self.config = self._load_config()
+        self.base_path = self._find_storage_path()
 
-    def _find_array_main(self):
-        """Dynamically find the array_main mount point."""
-        # Look for array_main* in /Volumes
-        candidates = glob.glob("/Volumes/array_main*")
-        
+    def _load_config(self):
+        """Load configuration from config.json."""
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r') as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
+
+    def _find_storage_path(self):
+        """Dynamically find storage: Network drive first, then local fallback."""
+        storage_cfg = self.config.get("storage", {})
+        volume_prefix = storage_cfg.get("network_volume_prefix", "array_main")
+        folder_name = storage_cfg.get("network_folder_name", "VTT_Storage")
+        local_folder = storage_cfg.get("local_fallback_folder", "VTT_Storage")
+
+        # 1. Check for Network Volumes
+        candidates = glob.glob(f"/Volumes/{volume_prefix}*")
         for candidate in candidates:
-            # Check for Lite_VTT folder
-            vtt_path = os.path.join(candidate, "Lite_VTT")
+            vtt_path = os.path.join(candidate, folder_name)
             if os.path.isdir(vtt_path):
                 return vtt_path
         
-        # Fallback if not found (notify user later to check mount)
-        return None
+        # 2. Fallback to Local Project Root
+        # We look for a folder in the project root first
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        local_vtt = os.path.join(project_root, local_folder)
+        
+        if not os.path.exists(local_vtt):
+            try:
+                os.makedirs(local_vtt, exist_ok=True)
+            except:
+                pass
+                
+        return local_vtt
 
     def start(self):
         """Start recording."""
-        # Ensure previous stream is closed
         if self._stream:
             try:
                 self._stream.stop()
                 self._stream.close()
-            except Exception as e:
-                print(f"Warning: Failed to close previous stream: {e}")
+            except:
+                pass
             finally:
                 self._stream = None
 
@@ -77,6 +102,7 @@ class LiteRecorder:
         if self._stream:
             self._stream.stop()
             self._stream.close()
+            self._stream = None
         
         if not self._audio_buffer:
             return None
@@ -84,15 +110,11 @@ class LiteRecorder:
         return np.concatenate(self._audio_buffer, axis=0)
 
     def save(self, audio_data, filename=None):
-        """Save audio to the array_main/Lite_VTT/Lite_Scribe_Audio folder."""
-        if self.base_path is None:
-            # Re-check path in case it was mounted later
-            self.base_path = self._find_array_main()
-            
-        if self.base_path is None:
-            raise FileNotFoundError("Could not find 'Lite_VTT' folder in /Volumes/array_main*")
+        """Save audio to the storage folder."""
+        if not self.base_path or not os.path.exists(self.base_path):
+            self.base_path = self._find_storage_path()
 
-        save_dir = os.path.join(self.base_path, "Lite_Scribe_Audio")
+        save_dir = os.path.join(self.base_path, "Recordings")
         os.makedirs(save_dir, exist_ok=True)
         
         if not filename:
@@ -104,17 +126,13 @@ class LiteRecorder:
         return full_path, filename
 
     def save_transcript(self, text, audio_filename):
-        """Save transcript to the array_main/Lite_VTT/Lite_Scribe_Transcripts folder."""
-        if self.base_path is None:
-            self.base_path = self._find_array_main()
-            
-        if self.base_path is None:
-            raise FileNotFoundError("Could not find 'Lite_VTT' folder in /Volumes/array_main*")
+        """Save transcript to the storage folder."""
+        if not self.base_path or not os.path.exists(self.base_path):
+            self.base_path = self._find_storage_path()
 
-        save_dir = os.path.join(self.base_path, "Lite_Scribe_Transcripts")
+        save_dir = os.path.join(self.base_path, "Transcripts")
         os.makedirs(save_dir, exist_ok=True)
         
-        # Replace extension with .txt
         base_name = os.path.splitext(audio_filename)[0]
         txt_filename = f"{base_name}.txt"
         
@@ -124,7 +142,6 @@ class LiteRecorder:
         return full_path
 
     def trim_silence(self, audio_data, threshold=0.01):
-        """Basic silence trimming from start/end."""
-        # TODO: Implement accurate VAD or energy-based trimming if needed
-        # For now, simplistic amplitude check
-        return audio_data  # Placeholder for V1, strictly requested features first
+        """Basic silence trimming from start/end (Placeholder)."""
+        return audio_data
+

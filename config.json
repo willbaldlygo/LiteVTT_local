@@ -1,0 +1,15 @@
+{
+    "hotkeys": {
+        "trigger": "Fn+Ctrl",
+        "notes": "Common options: 'Fn+Ctrl', 'Cmd+Shift', 'Option+S'. Note: Fn+Ctrl is the best for avoiding system conflicts."
+    },
+    "storage": {
+        "network_volume_prefix": "array_main",
+        "network_folder_name": "VTT_Storage",
+        "local_fallback_folder": "VTT_Storage"
+    },
+    "model": {
+        "default_model": "ggml-base.bin",
+        "use_small_en": false
+    }
+}

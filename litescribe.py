@@ -6,8 +6,36 @@ LiteScribe - Recording & Transcription Tool
 import os
 import sys
 import time
+import subprocess
+import tempfile
+import shlex
 from vtt.recorder import LiteRecorder
 from vtt.transcriber import Transcriber
+
+# Formats that soundfile can read natively
+SUPPORTED_FORMATS = {'.wav', '.flac', '.ogg', '.aiff', '.aif'}
+
+def convert_to_wav(input_path):
+    """Convert audio file to WAV using ffmpeg. Returns path to temp WAV file."""
+    ext = os.path.splitext(input_path)[1].lower()
+    if ext in SUPPORTED_FORMATS:
+        return input_path, False  # No conversion needed
+    
+    # Create temp file for converted audio
+    temp_fd, temp_path = tempfile.mkstemp(suffix='.wav')
+    os.close(temp_fd)
+    
+    try:
+        subprocess.run([
+            'ffmpeg', '-y', '-i', input_path,
+            '-ar', '16000',  # Resample to 16kHz for Whisper
+            '-ac', '1',      # Convert to mono
+            temp_path
+        ], check=True, capture_output=True)
+        return temp_path, True  # Temp file needs cleanup
+    except subprocess.CalledProcessError as e:
+        os.unlink(temp_path)
+        raise RuntimeError(f"ffmpeg conversion failed: {e.stderr.decode()}")
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -61,7 +89,18 @@ def mode_record(recorder, transcriber):
 def mode_transcribe_file(recorder, transcriber):
     print("\n--- FILE TRANSCRIPTION MODE ---")
     print("Drag and drop an audio file here:")
-    file_path = input("> ").strip().replace("'", "").replace('"', "")
+    raw_input = input("> ").strip()
+    
+    # Use shlex to handle escaped spaces and quotes from terminal drag-and-drop
+    try:
+        parts = shlex.split(raw_input)
+        if not parts:
+            print("No file provided.")
+            return
+        file_path = parts[0]
+    except ValueError:
+        # Fallback for malformed input
+        file_path = raw_input.replace("'", "").replace('"', "")
     
     if not os.path.exists(file_path):
         print("File not found.")
@@ -77,19 +116,15 @@ def mode_transcribe_file(recorder, transcriber):
     # We want to use recorder's save_transcript logic
     
     try:
-        # We need a dummy filename if we are not saving the audio itself
-        # But wait, user wants "all audio files... stored in the array".
-        # So we should copy the file to the array.
-        
         import shutil
         filename = os.path.basename(file_path)
         
         # Determine save path using recorder logic
-        if recorder.base_path is None:
-            recorder.base_path = recorder._find_array_main()
+        if not recorder.base_path:
+            recorder.base_path = recorder._find_storage_path()
             
         if recorder.base_path:
-            save_dir = os.path.join(recorder.base_path, "Lite_Scribe_Audio")
+            save_dir = os.path.join(recorder.base_path, "Recordings")
             os.makedirs(save_dir, exist_ok=True)
             dest_path = os.path.join(save_dir, filename)
             
@@ -97,29 +132,32 @@ def mode_transcribe_file(recorder, transcriber):
                 shutil.copy2(file_path, dest_path)
                 print(f"Archived audio to: {filename}")
             
-            # Now transcribe
-            # To use existing transcriber class, we can load file or pass path
-            # The current Transcriber class expects numpy array. 
-            # Let's use internal pywhispercpp model directly or update Transcriber.
-            # Easier to just use Transcriber.transcribe with numpy array loaded via soundfile
+            # Convert to WAV if needed (for m4a, mp3, etc.)
+            audio_path, needs_cleanup = convert_to_wav(file_path)
             
-            import soundfile as sf
-            import numpy as np
-            import scipy.signal
-            
-            data, samplerate = sf.read(file_path)
-            # Convert to mono/16k if needed
-             # Convert to mono if stereo
-            if len(data.shape) > 1:
-                data = data.mean(axis=1)
-            
-            if samplerate != 16000:
-                num_samples = int(len(data) * 16000 / samplerate)
-                data = scipy.signal.resample(data, num_samples)
+            try:
+                import soundfile as sf
+                import numpy as np
                 
-            data = data.astype(np.float32)
-            
-            text = transcriber.transcribe(data)
+                data, samplerate = sf.read(audio_path)
+                
+                # Convert to mono if stereo
+                if len(data.shape) > 1:
+                    data = data.mean(axis=1)
+                
+                # Resample if not already 16kHz
+                if samplerate != 16000:
+                    import scipy.signal
+                    num_samples = int(len(data) * 16000 / samplerate)
+                    data = scipy.signal.resample(data, num_samples)
+                    
+                data = data.astype(np.float32)
+                
+                text = transcriber.transcribe(data)
+            finally:
+                # Clean up temp file if we created one
+                if needs_cleanup and os.path.exists(audio_path):
+                    os.unlink(audio_path)
             
             print("\n--- TRANSCRIPT ---")
             print(text)
@@ -130,7 +168,7 @@ def mode_transcribe_file(recorder, transcriber):
             print(f"Saved Transcript: {os.path.basename(txt_path)}")
             
         else:
-            print("Error: Could not find array_main to save files.")
+            print("Error: Could not determine a save location for transcripts.")
             
     except Exception as e:
         print(f"Error: {e}")
@@ -139,15 +177,28 @@ def mode_transcribe_file(recorder, transcriber):
 def main():
     # Setup
     recorder = LiteRecorder()
-    if not recorder.base_path:
-        print("⚠️  WARNING: Could not find 'Lite_VTT' folder in /Volumes/array_main*")
-        print("   Recording/Transcription saving will likely fail.")
-        print("   Please ensure the network drive is mounted.")
+    if "Volumes" not in str(recorder.base_path):
+        print(f"📂 Storage: {recorder.base_path} (Local Mode)")
+        print("   Note: Network drive not found, saving locally.")
         print("")
     else:
-        print(f"📂 Central Storage: {recorder.base_path}")
+        print(f"📂 Storage: {recorder.base_path} (Network/Sync)")
         
-    model_path = os.path.join(os.path.dirname(__file__), "models", "ggml-base.bin")
+    # Model path logic
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(project_root, "models", "ggml-base.bin")
+    
+    # Check for smarter model
+    smarter_model = os.path.join(project_root, "models", "ggml-small.en.bin")
+    if os.path.exists(smarter_model):
+        model_path = smarter_model
+        print(f"✨ Using high-accuracy model: {os.path.basename(model_path)}")
+    
+    if not os.path.exists(model_path):
+        print(f"❌ Model not found at: {model_path}")
+        print("   Please run 'python download_models.py' first.")
+        return
+
     transcriber = get_transcriber(model_path)
     
     while True:
@@ -173,3 +224,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
