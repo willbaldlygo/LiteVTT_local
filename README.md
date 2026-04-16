@@ -1,6 +1,6 @@
 # LiteVTT (Lite Voice-to-Text)
 
-A lightweight, 100% local voice dictation and transcription tool for macOS.
+A lightweight, unobtrusive, 100% local voice dictation and transcription for macOS.
 
 ## Components
 - **LiteType**: System-wide voice dictation triggered by a hotkey (Default: `Fn+Ctrl`). Inserts text directly at your cursor.
@@ -43,7 +43,7 @@ Run the interactive downloader to get the Whisper models:
 ```bash
 python download_models.py
 ```
-*Choose **Base** for speed or **Small English** for best accuracy.*
+*Choose **Base** for best accuracy or **Small English** for speed.*
 
 ---
 
@@ -55,7 +55,7 @@ Start the menu bar app:
 python litetype.py
 ```
 - **Action**: Hold **`Fn + Ctrl`** to record. Release to transcribe and paste.
-- **Voice Shutdown**: Say *"LiteType shut down"* to close the app via voice.
+- **Voice Shutdown**: Hold **`Fn + Ctrl`** to record, then say *"LiteType shut down"* to close the app via voice.
 
 ### LiteScribe (Recording & Files)
 ```bash
