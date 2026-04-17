@@ -6,7 +6,9 @@ Downloads Whisper models from Hugging Face (ggerganov/whisper.cpp).
 
 import os
 import sys
+import ssl
 import urllib.request
+import certifi
 from tqdm import tqdm
 
 MODELS = {
@@ -21,6 +23,11 @@ class DownloadProgressBar(tqdm):
         self.update(b * bsize - self.n)
 
 def download_url(url, output_path):
+    # Use certifi certificates — required on fresh macOS Python installs
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
+    urllib.request.install_opener(opener)
+
     with DownloadProgressBar(unit='B', unit_scale=True,
                              miniters=1, desc=url.split('/')[-1]) as t:
         urllib.request.urlretrieve(url, filename=output_path, reporthook=t.update_to)
