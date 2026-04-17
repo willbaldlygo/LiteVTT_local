@@ -4,6 +4,7 @@ Inserts transcribed text at the current cursor position
 in any application using clipboard and paste.
 """
 
+import os
 import subprocess
 import time
 
@@ -40,7 +41,7 @@ def insert_text(text: str) -> bool:
         process = subprocess.Popen(
             ['pbcopy'],
             stdin=subprocess.PIPE,
-            env={'LANG': 'en_US.UTF-8'}
+            env={**os.environ, 'LANG': 'en_US.UTF-8'}
         )
         process.communicate(text.encode('utf-8'))
 
