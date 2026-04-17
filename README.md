@@ -23,6 +23,13 @@ A lightweight, unobtrusive, 100% local voice dictation and transcription for mac
 3. Click **Open** again in the security prompt.
 4. The script will create a virtual environment, install dependencies, and walk you through downloading a model.
 
+To clone the repo:
+Clone and enter the repository
+```bash
+git clone https://github.com/willbaldlygo/LiteVTT_local.git
+cd LiteVTT_local
+```
+
 ### Option B: Manual Setup
 
 #### 1. Prerequisites
