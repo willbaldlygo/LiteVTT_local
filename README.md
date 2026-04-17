@@ -18,7 +18,11 @@ A lightweight, unobtrusive, 100% local voice dictation and transcription for mac
 
 ### Option A: One-Click Setup (Recommended)
 
-1. Clone or download this repository and open the folder in Finder.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/willbaldlygo/LiteVTT_local.git
+   cd LiteVTT_local
+   ```
 2. **Right-click** `Setup.command` and choose **Open** (required on first run — macOS will block a direct double-click from an unrecognised developer).
 3. Click **Open** again in the security prompt.
 4. The script will create a virtual environment, install dependencies, and walk you through downloading a model.
