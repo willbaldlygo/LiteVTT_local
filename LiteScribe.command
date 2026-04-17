@@ -14,4 +14,6 @@ fi
 
 # Activate and run
 source venv/bin/activate
-python3 litescribe.py
+python litescribe.py
+
+osascript -e 'tell application "Terminal" to close front window'
