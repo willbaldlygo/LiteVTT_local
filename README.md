@@ -1,6 +1,6 @@
 # LiteVTT (Lite Voice-to-Text)
 
-A lightweight, unobtrusive, 100% local voice dictation and transcription tool for macOS.
+A lightweight, unobtrusive, 100% local voice dictation and transcription tool for macOS. I tried other transcription tools and found they took up screen space with UI's full of features I didn't need. With LiteType it's: hold down hotkeys > talk > let go of hotkeys > text appears. That's it.
 
 ## Components
 - **LiteType**: System-wide voice dictation triggered by a hotkey (`Fn+Ctrl`). Inserts text directly at your cursor.
