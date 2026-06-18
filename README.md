@@ -20,27 +20,23 @@ A lightweight, unobtrusive, 100% local voice dictation tool for macOS. Hold a ho
 
 **Prerequisites**
 - macOS 12.0+
-- Python 3.11+ (the easy installer below will point you to the download if it's missing)
+- Python 3.11+ — verify with `python3 --version`
 
-### Option A: Double-click (recommended for most people)
-
-1. Download **`LiteType.command`** (ship it inside the release `.zip` so macOS keeps it runnable) and unzip it.
-2. **Right-click** `LiteType.command` → **Open** → **Open** again. *(This right-click step is only needed the first time — macOS blocks double-clicking files from unidentified developers.)*
-3. The first run sets everything up automatically: it finds Python, installs LiteType in its own private environment, downloads a speech model, and launches the app. Later runs just launch it.
-
-That's it — no terminal commands to type.
-
-### Option B: pip (for developers)
+Install straight from GitHub (a virtual environment is recommended):
 
 ```bash
 python3 -m venv ~/.venvs/litetype
 source ~/.venvs/litetype/bin/activate
 pip install git+https://github.com/willbaldlygo/LiteVTT_local.git
-litetype-download-models   # download a model
-litetype                   # run it
 ```
 
 This installs two commands: `litetype` (the app) and `litetype-download-models`.
+
+### Download a model
+
+```bash
+litetype-download-models
+```
 
 Models are saved to `~/.local/share/litetype/models/`. Two are available:
 - **Base** (~140 MB): Faster, good for everyday dictation.
@@ -50,7 +46,9 @@ Models are saved to `~/.local/share/litetype/models/`. Two are available:
 
 ## Usage
 
-If you installed with **Option A**, just double-click `LiteType.command`. With **Option B**, run `litetype`.
+```bash
+litetype
+```
 
 A microphone icon (`🎙️`) appears in your menu bar when LiteType is ready.
 
@@ -58,6 +56,8 @@ A microphone icon (`🎙️`) appears in your menu bar when LiteType is ready.
 - **Release** to transcribe and insert the text at your cursor.
 - Say *"LiteType shut down"* while recording to quit hands-free.
 - macOS will prompt for **Microphone** and **Accessibility** access on first run — both are required.
+
+> Tip: to launch it without keeping a terminal open, keep the virtualenv active in a login item, or create a small `.command` wrapper that activates the venv and runs `litetype`.
 
 ---
 
@@ -86,10 +86,6 @@ A config file is created on first run at `~/.config/litetype/config.json`. Edit 
 ---
 
 ## Troubleshooting
-
-**`LiteType.command` won't open / is "blocked" or "from an unidentified developer"** — right-click it and choose **Open**, then **Open** again. This is only needed the first time.
-
-**Double-clicking `LiteType.command` does nothing** — the file lost its "executable" permission, usually from downloading it on its own instead of via the release `.zip`. Re-download the `.zip` and unzip it in Finder, which preserves permissions.
 
 **`zsh: command not found: python`** — use `python3`. macOS does not provide a `python` command by default.
 
