@@ -7,10 +7,10 @@ and text insertion using a global hotkey.
 import rumps
 import threading
 import time
-import os
-import json
 
 from .audio import AudioRecorder
+from .config import load_config
+from .models import get_model_path
 from .transcriber import Transcriber
 from .hotkeys import create_hotkey_handler
 from .text_insert import insert_text
@@ -27,12 +27,11 @@ class VTTApp(rumps.App):
             quit_button=None
         )
 
-
         # Components
         self._audio_recorder = AudioRecorder()
         self._transcriber: Transcriber | None = None
         self._hotkey_handler = None
-        self.config = self._load_config()
+        self.config = load_config()
 
         # State
         self._is_recording = False
@@ -40,7 +39,7 @@ class VTTApp(rumps.App):
         self._init_done = False
 
         # Trigger help text
-        self._trigger = self.config.get("hotkeys", {}).get("trigger", "Fn+Ctrl")
+        self._trigger = self.config.get("hotkey", "Fn+Ctrl")
 
         # Build menu
         self._status_item = rumps.MenuItem("Status: Starting...")
@@ -52,17 +51,6 @@ class VTTApp(rumps.App):
             rumps.MenuItem("Quit", callback=self._quit)
         ]
 
-    def _load_config(self):
-        """Load configuration from config.json."""
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r') as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"Warning: Failed to load config: {e}")
-        return {}
-
     @rumps.timer(1)
     def _init_timer(self, _):
         """Initialize everything on first timer tick."""
@@ -70,7 +58,6 @@ class VTTApp(rumps.App):
             return
         self._init_done = True
 
-        # Load model and setup hotkeys
         self._load_model()
         self._setup_hotkeys()
 
@@ -79,33 +66,13 @@ class VTTApp(rumps.App):
         try:
             self._update_status("Loading model...")
 
-            models_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
-            model_cfg = self.config.get("model", {})
-            use_small_en = model_cfg.get("use_small_en", False)
-            default_model = model_cfg.get("default_model", "ggml-base.bin")
-
-            # Build candidate list based on config
-            if use_small_en:
-                candidates = ["ggml-small.en.bin", "ggml-base.en.bin", "ggml-base.bin"]
-            else:
-                candidates = [default_model, "ggml-base.en.bin", "ggml-small.en.bin", "ggml-base.bin"]
-
-            # Deduplicate while preserving order
-            seen = set()
-            candidates = [c for c in candidates if not (c in seen or seen.add(c))]
-
-            model_path = None
-            for name in candidates:
-                path = os.path.join(models_dir, name)
-                if os.path.exists(path):
-                    model_path = path
-                    self._update_status(f"Loaded: {name}")
-                    break
+            model_path, model_name = get_model_path(self.config)
 
             if not model_path:
                 self._update_status("Model not found!")
                 return
 
+            self._update_status(f"Loaded: {model_name}")
             self._transcriber = Transcriber(model_path)
             self.title = "🎙️"
 
@@ -117,7 +84,8 @@ class VTTApp(rumps.App):
         try:
             self._hotkey_handler = create_hotkey_handler(
                 on_activate=self._on_hotkey_press,
-                on_deactivate=self._on_hotkey_release
+                on_deactivate=self._on_hotkey_release,
+                hotkey=self._trigger,
             )
             self._hotkey_handler.start()
             self._update_status(f"Ready - Hold {self._trigger}")
@@ -243,7 +211,7 @@ class VTTApp(rumps.App):
 
 def main():
     """Entry point for the application."""
-    print("Starting VTT Local...")
+    print("Starting LiteType...")
     print("=" * 40)
     print("Menu bar icon: VTT (or 🎙️ when ready)")
     print("Hold Fn+Ctrl to record, release to transcribe.")

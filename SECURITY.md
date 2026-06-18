@@ -2,19 +2,18 @@
 
 ## Supported Versions
 
-LiteVTT is a personal macOS tool under active development. Only the latest
+LiteType is a personal macOS tool under active development. Only the latest
 commit on `main` is supported.
 
 ## Scope
 
-LiteVTT processes all audio and text **entirely on-device** using a local
+LiteType processes all audio and text **entirely on-device** using a local
 Whisper model. It makes no network connections and stores no data outside
-`~/Documents/LiteVTT/` (or a path you configure). There are no servers,
-accounts, or credentials involved.
+your machine. There are no servers, accounts, or credentials involved.
 
-The practical attack surface is therefore small: local file handling,
-subprocess calls to macOS system utilities (`pbcopy`, `pbpaste`, `osascript`,
-`ffmpeg`), and Python dependency vulnerabilities.
+The practical attack surface is therefore small: subprocess calls to macOS
+system utilities (`pbcopy`, `pbpaste`, `osascript`), and Python dependency
+vulnerabilities.
 
 ## Reporting a Vulnerability
 
@@ -35,10 +34,8 @@ within **30 days** for confirmed issues.
 Good candidates:
 
 - A Python dependency with a published CVE that affects this codebase.
-- A subprocess call that can be exploited via a crafted file path or
-  filename to execute arbitrary code.
-- A way for a malicious audio file to escape the temp-file sandbox during
-  transcription.
+- A subprocess call that can be exploited via crafted input to execute
+  arbitrary code.
 
 Out of scope:
 

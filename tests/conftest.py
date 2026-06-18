@@ -7,7 +7,7 @@ import sys
 import os
 from unittest.mock import MagicMock
 
-# Ensure the project root is importable (litescribe, vtt.*)
+# Ensure the project root is importable (vtt.*)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Mock every module that requires macOS frameworks or physical hardware.
@@ -15,7 +15,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 for _mod in [
     'numpy',
     'sounddevice',
-    'soundfile',
     'rumps',
     'AppKit',
     'Quartz',

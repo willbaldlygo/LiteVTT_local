@@ -1,16 +1,18 @@
-# LiteVTT (Lite Voice-to-Text)
+# LiteType
 
-A lightweight, unobtrusive, 100% local voice dictation and transcription tool for macOS.
+A lightweight, unobtrusive, 100% local voice dictation tool for macOS. Hold a hotkey, speak, release — your words appear at the cursor in any app.
 
-## Components
-- **LiteType**: System-wide voice dictation triggered by a hotkey (`Fn+Ctrl`). Inserts text directly at your cursor.
-- **LiteScribe**: A CLI tool for recording audio and transcribing existing files (supports `.mp3`, `.m4a`, `.wav`, and more).
+**Privacy first.** No audio or text ever leaves your machine. No accounts, no cloud, no network connections.
+
+---
 
 ## Features
-- **Privacy First**: 100% local processing. No audio or text ever leaves your machine.
-- **High Accuracy**: Powered by OpenAI's Whisper (via `whisper.cpp`).
-- **Automatic Storage**: Archives audio and transcripts to `~/Documents/LiteVTT/` by default (configurable in `config.json`).
-- **Clipboard Safe**: The clipboard is temporarily used during paste but restored to its original contents afterward.
+
+- **System-wide dictation** triggered by a customisable hotkey (default: `Fn+Ctrl`)
+- **Powered by Whisper** (via `whisper.cpp`) — high accuracy, runs entirely on-device
+- **Clipboard safe** — saves and restores your clipboard around every paste
+- **Voice shutdown** — say *"LiteType shut down"* while recording to quit hands-free
+- **macOS 12.0+**
 
 ---
 
@@ -23,92 +25,92 @@ A lightweight, unobtrusive, 100% local voice dictation and transcription tool fo
    git clone https://github.com/willbaldlygo/LiteVTT_local.git
    cd LiteVTT_local
    ```
-2. **Right-click** `Setup.command` and choose **Open** (required on first run — macOS will block a direct double-click from an unrecognised developer).
+2. **Right-click** `Setup.command` and choose **Open** (required on first run — macOS blocks a direct double-click from an unrecognised developer).
 3. Click **Open** again in the security prompt.
-4. The script will create a virtual environment, install dependencies, and walk you through downloading a model.
+4. The script creates a virtual environment, installs dependencies, and walks you through downloading a model.
 
 ### Option B: Manual Setup
 
-#### 1. Prerequisites
-- **macOS 12.0+**
-- **Python 3.11+** — verify with `python3 --version`
-- **FFmpeg** — required for processing audio formats other than WAV:
-  ```bash
-  brew install ffmpeg
-  ```
+**Prerequisites**
+- macOS 12.0+
+- Python 3.11+ — verify with `python3 --version`
 
-#### 2. Clone and enter the repository
 ```bash
 git clone https://github.com/willbaldlygo/LiteVTT_local.git
 cd LiteVTT_local
-```
-
-> **Note:** `git clone` creates a folder called `LiteVTT_local`. The `cd` above puts you inside it. All subsequent commands must be run from this folder.
-
-#### 3. Create a virtual environment and install dependencies
-```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-```
-
-#### 4. Download a model
-```bash
 python3 download_models.py
 ```
 
 Two models are available:
-- **Base** (~140 MB): Faster and lighter. Good for most use cases.
-- **Small English** (~460 MB): Slower but more accurate. Recommended for better transcription quality.
+- **Base** (~140 MB): Faster, good for everyday dictation.
+- **Small English** (~460 MB): Slower, noticeably more accurate.
 
 ---
 
 ## Usage
 
-> All commands below assume the virtual environment is active (`source venv/bin/activate`). Alternatively, use the `.command` launcher files in Finder — they activate the venv automatically.
+Double-click **`LiteType.command`** in Finder, or from a terminal:
 
-### LiteType (Dictation)
 ```bash
+source venv/bin/activate
 python3 litetype.py
 ```
-- Hold **`Fn + Ctrl`** to record. Release to transcribe and paste at the cursor.
-- Say *"LiteType shut down"* while recording to quit via voice.
-- macOS will prompt for **Microphone** and **Accessibility** access on first run — both are required.
 
-### LiteScribe (Recording & Transcription)
-```bash
-python3 litescribe.py
-```
-- **Option 1**: Record new audio directly to your storage folder.
-- **Option 2**: Drag and drop any audio file to transcribe it.
+A microphone icon (`🎙️`) appears in your menu bar when LiteType is ready.
+
+- **Hold** your hotkey to start recording.
+- **Release** to transcribe and insert the text at your cursor.
+- macOS will prompt for **Microphone** and **Accessibility** access on first run — both are required.
 
 ---
 
 ## Configuration
-Edit `config.json` to customise behaviour:
-- **Storage**: Set `storage.path` to override the default `~/Documents/LiteVTT/`. Leave empty to use the default.
-- **Model**: Set `model.default_model` to choose which model to load, or set `model.use_small_en` to `true` to prefer the Small English model when available.
 
-Note: The hotkey (`Fn+Ctrl`) is hardcoded and cannot be changed via `config.json`.
+Edit `config.json` to customise behaviour:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `hotkey` | `"Fn+Ctrl"` | Modifier keys to hold while recording. Supported keys: `Fn`, `Ctrl`, `Shift`, `Opt`, `Alt`, `Cmd`. |
+| `model.default_model` | `"ggml-base.bin"` | Which model file to load first. |
+| `model.use_small_en` | `false` | Set to `true` to prefer the Small English model when available. |
+
+**Hotkey examples:**
+
+```json
+{ "hotkey": "Fn+Ctrl" }
+{ "hotkey": "Ctrl+Shift" }
+{ "hotkey": "Fn+Opt" }
+```
+
+> The hotkey must be a combination of modifier keys only (Fn, Ctrl, Shift, Opt/Alt, Cmd). Regular keys like letters or numbers are not supported.
 
 ---
 
 ## Troubleshooting
 
-**`zsh: command not found: python`** — use `python3` instead. macOS does not provide a `python` command by default.
+**`zsh: command not found: python`** — use `python3`. macOS does not provide a `python` command by default.
 
-**`Setup.command` is blocked by macOS** — right-click it and choose Open instead of double-clicking.
+**`Setup.command` is blocked by macOS** — right-click it and choose Open instead of double-clicking. You may need to do the same for `LiteType.command` on first run.
 
-**`pip install` fails with "bad interpreter"** — a stale `venv` folder from a previous attempt is present. Delete it and start fresh: `rm -rf venv`, then re-run the setup steps.
+**`pip install` fails with "bad interpreter"** — a stale `venv` from a previous attempt exists. Delete it and start fresh: `rm -rf venv`.
 
 **`No module named ...`** — the virtual environment is not active. Run `source venv/bin/activate` first.
+
+**Microphone not working** — open System Settings → Privacy & Security → Microphone and ensure Terminal (or your terminal app) is listed and enabled.
+
+**Text not pasting** — open System Settings → Privacy & Security → Accessibility and ensure Terminal is listed and enabled.
 
 ---
 
 ## License & Credits
-- **Models**: OpenAI Whisper (MIT License).
-- **Inference**: Ported via [whisper.cpp](https://github.com/ggerganov/whisper.cpp) by Georgi Gerganov.
-- **License**: This project is released under the **MIT License**.
+
+- **Models**: OpenAI Whisper (MIT License)
+- **Inference**: [whisper.cpp](https://github.com/ggerganov/whisper.cpp) by Georgi Gerganov
+- **License**: MIT — see `LICENSE`
 
 ---
+
 *Built for speed and privacy.*

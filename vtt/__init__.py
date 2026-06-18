@@ -1,1 +1,1 @@
-"""VTT Local - Voice to Text tool for macOS."""
+"""LiteType - lightweight local voice dictation for macOS."""
