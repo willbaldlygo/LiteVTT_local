@@ -1,8 +1,8 @@
-"""Tests for model candidate priority in vtt.models.get_model_path."""
+"""Tests for model candidate priority in litetype.models.get_model_path."""
 
 import pytest
 from unittest.mock import patch
-from vtt.models import get_model_path
+from litetype.models import get_model_path
 
 
 def exists_for(*model_names):

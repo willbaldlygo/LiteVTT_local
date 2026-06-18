@@ -1,4 +1,4 @@
-"""Audio capture module for VTT Local.
+"""Audio capture module for LiteType.
 
 Captures audio from the microphone and returns numpy arrays
 suitable for Whisper transcription (16kHz mono float32).

@@ -1,4 +1,4 @@
-"""Text insertion module for VTT Local.
+"""Text insertion module for LiteType.
 
 Inserts transcribed text at the current cursor position
 in any application using clipboard and paste.

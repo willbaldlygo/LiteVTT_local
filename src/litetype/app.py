@@ -1,4 +1,4 @@
-"""Main application controller for VTT Local.
+"""Main application controller for LiteType.
 
 Menu bar app that coordinates audio recording, transcription,
 and text insertion using a global hotkey.
@@ -17,7 +17,7 @@ from .text_insert import insert_text
 from AppKit import NSSound
 
 
-class VTTApp(rumps.App):
+class LiteTypeApp(rumps.App):
     """Menu bar application for voice-to-text dictation."""
 
     def __init__(self):
@@ -69,7 +69,8 @@ class VTTApp(rumps.App):
             model_path, model_name = get_model_path(self.config)
 
             if not model_path:
-                self._update_status("Model not found!")
+                self._update_status("No model — run litetype-download-models")
+                print("No Whisper model found. Run 'litetype-download-models' to fetch one.")
                 return
 
             self._update_status(f"Loaded: {model_name}")
@@ -217,7 +218,7 @@ def main():
     print("Hold Fn+Ctrl to record, release to transcribe.")
     print("=" * 40)
 
-    app = VTTApp()
+    app = LiteTypeApp()
     app.run()
 
 

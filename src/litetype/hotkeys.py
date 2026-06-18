@@ -1,4 +1,4 @@
-"""Hotkey handler module for VTT Local.
+"""Hotkey handler module for LiteType.
 
 Uses native macOS NSEvent global monitoring.
 Triggers on a configurable modifier-key combination (default: Fn+Ctrl).

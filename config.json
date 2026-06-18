@@ -1,7 +1,0 @@
-{
-    "hotkey": "Fn+Ctrl",
-    "model": {
-        "default_model": "ggml-base.bin",
-        "use_small_en": false
-    }
-}

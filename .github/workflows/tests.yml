@@ -18,7 +18,10 @@ jobs:
           python-version: "3.11"
 
       - name: Install test dependencies
-        run: pip install pytest
+        run: pip install pytest build
 
       - name: Run tests
         run: python -m pytest tests/ -v
+
+      - name: Verify the package builds
+        run: python -m build

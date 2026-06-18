@@ -5,6 +5,7 @@ __pycache__/
 venv/
 env/
 .env
+.pytest_cache/
 
 # Mac
 .DS_Store

@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "litetype"
+version = "0.1.0"
+description = "Lightweight, 100% local voice dictation for macOS"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "willbaldlygo" }]
+keywords = ["dictation", "speech-to-text", "whisper", "macos", "voice", "privacy"]
+classifiers = [
+    "Environment :: MacOS X",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+dependencies = [
+    "pywhispercpp>=1.2.0",
+    "numpy>=1.24.0",
+    "sounddevice>=0.4.6",
+    "tqdm>=4.66.0",
+    "certifi>=2024.0.0",
+    # macOS-only GUI / system-integration dependencies.
+    "rumps>=0.4.0; sys_platform == 'darwin'",
+    "pyobjc-framework-Cocoa>=10.0; sys_platform == 'darwin'",
+    "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
+]
+
+[project.urls]
+Homepage = "https://github.com/willbaldlygo/LiteVTT_local"
+Repository = "https://github.com/willbaldlygo/LiteVTT_local"
+
+[project.scripts]
+litetype = "litetype.app:main"
+litetype-download-models = "litetype.download_models:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

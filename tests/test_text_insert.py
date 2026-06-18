@@ -3,7 +3,7 @@
 import time
 import pytest
 from unittest.mock import MagicMock, patch
-from vtt.text_insert import insert_text
+from litetype.text_insert import insert_text
 
 
 def _popen(returncode=0):
@@ -40,20 +40,20 @@ class TestBasic:
 
     def test_successful_insert_returns_true(self):
         runs = iter([_run(stdout=b'old'), _run()])   # pbpaste, osascript
-        with patch('vtt.text_insert.subprocess.Popen', return_value=_popen()), \
-             patch('vtt.text_insert.subprocess.run', side_effect=runs):
+        with patch('litetype.text_insert.subprocess.Popen', return_value=_popen()), \
+             patch('litetype.text_insert.subprocess.run', side_effect=runs):
             assert insert_text("hello") is True
 
     def test_pbcopy_failure_returns_false(self):
         runs = iter([_run(stdout=b'')])               # pbpaste
-        with patch('vtt.text_insert.subprocess.Popen', return_value=_popen(returncode=1)), \
-             patch('vtt.text_insert.subprocess.run', side_effect=runs):
+        with patch('litetype.text_insert.subprocess.Popen', return_value=_popen(returncode=1)), \
+             patch('litetype.text_insert.subprocess.run', side_effect=runs):
             assert insert_text("hello") is False
 
     def test_osascript_failure_returns_false(self):
         runs = iter([_run(stdout=b'old'), _run(returncode=1, stderr='err')])
-        with patch('vtt.text_insert.subprocess.Popen', return_value=_popen()), \
-             patch('vtt.text_insert.subprocess.run', side_effect=runs):
+        with patch('litetype.text_insert.subprocess.Popen', return_value=_popen()), \
+             patch('litetype.text_insert.subprocess.run', side_effect=runs):
             assert insert_text("hello") is False
 
 
@@ -65,8 +65,8 @@ class TestClipboardRestore:
     def test_text_encoded_utf8_into_clipboard(self):
         popen_mock = _popen()
         runs = iter([_run(stdout=b''), _run()])
-        with patch('vtt.text_insert.subprocess.Popen', return_value=popen_mock), \
-             patch('vtt.text_insert.subprocess.run', side_effect=runs):
+        with patch('litetype.text_insert.subprocess.Popen', return_value=popen_mock), \
+             patch('litetype.text_insert.subprocess.run', side_effect=runs):
             insert_text("héllo")
         popen_mock.communicate.assert_any_call("héllo".encode('utf-8'))
 
@@ -80,8 +80,8 @@ class TestClipboardRestore:
             return m
 
         runs = iter([_run(stdout=original), _run()])  # pbpaste, osascript
-        with patch('vtt.text_insert.subprocess.Popen', side_effect=mock_popen), \
-             patch('vtt.text_insert.subprocess.run', side_effect=runs):
+        with patch('litetype.text_insert.subprocess.Popen', side_effect=mock_popen), \
+             patch('litetype.text_insert.subprocess.run', side_effect=runs):
             result = insert_text("hello world")
 
         assert result is True
@@ -99,8 +99,8 @@ class TestClipboardRestore:
             return m
 
         runs = iter([_run(stdout=b''), _run()])
-        with patch('vtt.text_insert.subprocess.Popen', side_effect=mock_popen), \
-             patch('vtt.text_insert.subprocess.run', side_effect=runs):
+        with patch('litetype.text_insert.subprocess.Popen', side_effect=mock_popen), \
+             patch('litetype.text_insert.subprocess.run', side_effect=runs):
             insert_text("hello")
 
         assert len(popen_instances) == 2
@@ -116,8 +116,8 @@ class TestClipboardRestore:
             return m
 
         runs = iter([_run(returncode=1), _run()])  # pbpaste fails, osascript ok
-        with patch('vtt.text_insert.subprocess.Popen', side_effect=mock_popen), \
-             patch('vtt.text_insert.subprocess.run', side_effect=runs):
+        with patch('litetype.text_insert.subprocess.Popen', side_effect=mock_popen), \
+             patch('litetype.text_insert.subprocess.run', side_effect=runs):
             insert_text("hello")
 
         assert len(popen_instances) == 1   # only the text pbcopy, no restore
@@ -136,8 +136,8 @@ class TestClipboardRestore:
                 raise OSError("command not found")
             return _run()
 
-        with patch('vtt.text_insert.subprocess.Popen', side_effect=mock_popen), \
-             patch('vtt.text_insert.subprocess.run', side_effect=mock_run):
+        with patch('litetype.text_insert.subprocess.Popen', side_effect=mock_popen), \
+             patch('litetype.text_insert.subprocess.run', side_effect=mock_run):
             result = insert_text("hello")
 
         assert result is True
@@ -155,8 +155,8 @@ class TestClipboardRestore:
             return m
 
         runs = iter([_run(stdout=original), _run(returncode=1, stderr='err')])
-        with patch('vtt.text_insert.subprocess.Popen', side_effect=mock_popen), \
-             patch('vtt.text_insert.subprocess.run', side_effect=runs):
+        with patch('litetype.text_insert.subprocess.Popen', side_effect=mock_popen), \
+             patch('litetype.text_insert.subprocess.run', side_effect=runs):
             result = insert_text("hello")
 
         assert result is False
@@ -178,8 +178,8 @@ class TestClipboardRestore:
             return m
 
         runs = iter([_run(stdout=b'old'), _run()])
-        with patch('vtt.text_insert.subprocess.Popen', side_effect=mock_popen), \
-             patch('vtt.text_insert.subprocess.run', side_effect=runs):
+        with patch('litetype.text_insert.subprocess.Popen', side_effect=mock_popen), \
+             patch('litetype.text_insert.subprocess.run', side_effect=runs):
             result = insert_text("hello")   # must not raise
 
         assert result is True

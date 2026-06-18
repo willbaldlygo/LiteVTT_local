@@ -1,4 +1,4 @@
-"""Transcription module for VTT Local.
+"""Transcription module for LiteType.
 
 Wraps pywhispercpp for speech-to-text transcription.
 """

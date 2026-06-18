@@ -5,11 +5,12 @@ Downloads Whisper models from Hugging Face (ggerganov/whisper.cpp).
 """
 
 import os
-import sys
 import ssl
 import urllib.request
 import certifi
 from tqdm import tqdm
+
+from .paths import models_dir
 
 MODELS = {
     "base": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
@@ -33,11 +34,12 @@ def download_url(url, output_path):
         urllib.request.urlretrieve(url, filename=output_path, reporthook=t.update_to)
 
 def main():
-    models_dir = os.path.join(os.path.dirname(__file__), "models")
-    os.makedirs(models_dir, exist_ok=True)
-    
+    target_dir = models_dir()
+    os.makedirs(target_dir, exist_ok=True)
+
     print("LiteType Model Downloader")
     print("=========================")
+    print(f"Models will be saved to: {target_dir}")
     print("1. Base Model (~140MB) - Faster, good for standard dictation")
     print("2. Small English Model (~460MB) - Slower, much higher accuracy")
     print("3. Both")
@@ -58,7 +60,7 @@ def main():
     for model_key in to_download:
         url = MODELS[model_key]
         filename = os.path.basename(url)
-        output_path = os.path.join(models_dir, filename)
+        output_path = os.path.join(target_dir, filename)
         
         if os.path.exists(output_path):
             print(f"\n{filename} already exists. Skipping.")
