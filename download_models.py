@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Model Downloader for LiteVTT
+Model Downloader for LiteType
 Downloads Whisper models from Hugging Face (ggerganov/whisper.cpp).
 """
 
@@ -36,8 +36,8 @@ def main():
     models_dir = os.path.join(os.path.dirname(__file__), "models")
     os.makedirs(models_dir, exist_ok=True)
     
-    print("LiteVTT Model Downloader")
-    print("========================")
+    print("LiteType Model Downloader")
+    print("=========================")
     print("1. Base Model (~140MB) - Faster, good for standard dictation")
     print("2. Small English Model (~460MB) - Slower, much higher accuracy")
     print("3. Both")

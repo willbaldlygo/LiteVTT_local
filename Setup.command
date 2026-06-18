@@ -5,7 +5,7 @@
 cd "$(dirname "$0")"
 
 echo "=========================================="
-echo "      LiteVTT - First Time Setup"
+echo "      LiteType - First Time Setup"
 echo "=========================================="
 echo ""
 

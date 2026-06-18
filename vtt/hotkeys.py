@@ -1,12 +1,43 @@
 """Hotkey handler module for VTT Local.
 
 Uses native macOS NSEvent global monitoring.
-Triggers on Fn+Ctrl modifier combination.
+Triggers on a configurable modifier-key combination (default: Fn+Ctrl).
 """
 
 from typing import Callable
 from AppKit import NSEvent, NSFlagsChangedMask
-from Quartz import kCGEventFlagMaskControl, kCGEventFlagMaskSecondaryFn
+from Quartz import (
+    kCGEventFlagMaskControl,
+    kCGEventFlagMaskSecondaryFn,
+    kCGEventFlagMaskShift,
+    kCGEventFlagMaskAlternate,
+    kCGEventFlagMaskCommand,
+)
+
+FLAG_MAP = {
+    "Fn":    kCGEventFlagMaskSecondaryFn,
+    "Ctrl":  kCGEventFlagMaskControl,
+    "Shift": kCGEventFlagMaskShift,
+    "Opt":   kCGEventFlagMaskAlternate,
+    "Alt":   kCGEventFlagMaskAlternate,
+    "Cmd":   kCGEventFlagMaskCommand,
+}
+
+
+def parse_hotkey(hotkey_str: str) -> int:
+    """Parse a 'Fn+Ctrl' style string into a combined Quartz modifier flag mask.
+
+    Supported keys: Fn, Ctrl, Shift, Opt, Alt, Cmd.
+    Raises ValueError for unrecognised key names.
+    """
+    mask = 0
+    for part in hotkey_str.split("+"):
+        key = part.strip()
+        if key not in FLAG_MAP:
+            supported = ", ".join(sorted(set(FLAG_MAP)))
+            raise ValueError(f"Unknown modifier key: '{key}'. Supported: {supported}")
+        mask |= FLAG_MAP[key]
+    return mask
 
 
 class HotkeyHandler:
@@ -14,15 +45,11 @@ class HotkeyHandler:
 
     def __init__(self,
                  on_activate: Callable[[], None],
-                 on_deactivate: Callable[[], None]):
-        """Initialize the hotkey handler for Fn+Ctrl.
-
-        Args:
-            on_activate: Called when Fn+Ctrl are pressed
-            on_deactivate: Called when either is released
-        """
+                 on_deactivate: Callable[[], None],
+                 required_flags: int):
         self._on_activate = on_activate
         self._on_deactivate = on_deactivate
+        self._required_flags = required_flags
 
         self._hotkey_active = False
         self._flags_monitor = None
@@ -31,12 +58,7 @@ class HotkeyHandler:
     def _handle_flags_changed(self, event):
         """Handle modifier key changes."""
         flags = event.modifierFlags()
-
-        # Check if BOTH Control and Fn are pressed
-        ctrl_pressed = bool(flags & kCGEventFlagMaskControl)
-        fn_pressed = bool(flags & kCGEventFlagMaskSecondaryFn)
-
-        should_be_active = ctrl_pressed and fn_pressed
+        should_be_active = (flags & self._required_flags) == self._required_flags
 
         if should_be_active and not self._hotkey_active:
             self._hotkey_active = True
@@ -54,14 +76,10 @@ class HotkeyHandler:
             return
 
         self._running = True
-
-        # Monitor modifier key changes
         self._flags_monitor = NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(
             NSFlagsChangedMask,
             self._handle_flags_changed
         )
-
-        print("Hotkey listener started (Fn+Ctrl)")
 
     def stop(self) -> None:
         """Stop listening for hotkeys."""
@@ -77,9 +95,18 @@ class HotkeyHandler:
 
 
 def create_hotkey_handler(on_activate: Callable[[], None],
-                          on_deactivate: Callable[[], None]) -> HotkeyHandler:
-    """Create the Fn+Ctrl handler."""
+                          on_deactivate: Callable[[], None],
+                          hotkey: str = "Fn+Ctrl") -> HotkeyHandler:
+    """Create a hotkey handler for the given modifier combination.
+
+    Args:
+        on_activate: Called when all required modifiers are held.
+        on_deactivate: Called when any required modifier is released.
+        hotkey: '+'-separated modifier names, e.g. 'Fn+Ctrl', 'Ctrl+Shift'.
+    """
+    required_flags = parse_hotkey(hotkey)
     return HotkeyHandler(
         on_activate=on_activate,
-        on_deactivate=on_deactivate
+        on_deactivate=on_deactivate,
+        required_flags=required_flags,
     )

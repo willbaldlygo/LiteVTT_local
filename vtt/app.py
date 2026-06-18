@@ -39,7 +39,7 @@ class VTTApp(rumps.App):
         self._init_done = False
 
         # Trigger help text
-        self._trigger = self.config.get("hotkeys", {}).get("trigger", "Fn+Ctrl")
+        self._trigger = self.config.get("hotkey", "Fn+Ctrl")
 
         # Build menu
         self._status_item = rumps.MenuItem("Status: Starting...")
@@ -84,7 +84,8 @@ class VTTApp(rumps.App):
         try:
             self._hotkey_handler = create_hotkey_handler(
                 on_activate=self._on_hotkey_press,
-                on_deactivate=self._on_hotkey_release
+                on_deactivate=self._on_hotkey_release,
+                hotkey=self._trigger,
             )
             self._hotkey_handler.start()
             self._update_status(f"Ready - Hold {self._trigger}")
