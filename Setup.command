@@ -34,6 +34,6 @@ python download_models.py
 echo ""
 echo "=========================================="
 echo "✅ Setup Complete!"
-echo "You can now open LiteType.command or LiteScribe.command"
+echo "You can now open LiteType.command to start dictating."
 echo "=========================================="
 read -p "Press Enter to close..."

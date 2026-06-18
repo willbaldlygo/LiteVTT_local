@@ -1,10 +1,6 @@
 {
     "hotkeys": {
-        "trigger": "Fn+Ctrl",
-        "notes": "Hotkey is hardcoded to Fn+Ctrl via macOS NSEvent monitoring."
-    },
-    "storage": {
-        "path": ""
+        "trigger": "Fn+Ctrl"
     },
     "model": {
         "default_model": "ggml-base.bin",
