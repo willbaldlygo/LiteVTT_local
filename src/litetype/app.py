@@ -12,9 +12,7 @@ from .audio import AudioRecorder
 from .config import load_config
 from .models import get_model_path
 from .transcriber import Transcriber
-from .hotkeys import create_hotkey_handler
-from .text_insert import insert_text
-from AppKit import NSSound
+from .backends import create_hotkey_handler, insert_text, play_sound
 
 
 class LiteTypeApp(rumps.App):
@@ -94,12 +92,6 @@ class LiteTypeApp(rumps.App):
             self._update_status(f"Hotkey error")
 
 
-    def _play_sound(self, sound_name: str):
-        """Play a system sound."""
-        sound = NSSound.soundNamed_(sound_name)
-        if sound:
-            sound.play()
-
     def _on_hotkey_press(self):
         """Called when Fn+Ctrl is pressed."""
         print(">>> Recording started")
@@ -109,7 +101,7 @@ class LiteTypeApp(rumps.App):
 
         self._is_recording = True
         self.title = "🔴 REC"
-        self._play_sound("Tink")
+        play_sound("start")
         self._update_status("Recording...")
 
         try:
@@ -135,7 +127,7 @@ class LiteTypeApp(rumps.App):
         self._is_recording = False
         self._is_processing = True
         self.title = "⏳ PROC"
-        self._play_sound("Pop")
+        play_sound("stop")
         self._update_status("Transcribing...")
 
         # Transcribe in background

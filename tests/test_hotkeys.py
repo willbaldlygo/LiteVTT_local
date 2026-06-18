@@ -1,4 +1,4 @@
-"""Tests for hotkey string parsing in litetype.hotkeys.parse_hotkey.
+"""Tests for hotkey string parsing in the macOS backend.
 
 Quartz is mocked in conftest, so the combined flag value itself is opaque;
 these tests cover the parsing/validation logic, which is what matters.
@@ -6,7 +6,7 @@ these tests cover the parsing/validation logic, which is what matters.
 
 import pytest
 
-from litetype.hotkeys import parse_hotkey
+from litetype.backends.macos import parse_hotkey
 
 
 class TestParseHotkey:
