@@ -206,6 +206,11 @@ class VTTApp(rumps.App):
         """Quit the application."""
         if self._hotkey_handler:
             self._hotkey_handler.stop()
+        if hasattr(self, '_audio_recorder'):
+            try:
+                self._audio_recorder.close()
+            except Exception as e:
+                print(f"Warning: Error closing audio recorder: {e}")
         rumps.quit_application()
 
 
