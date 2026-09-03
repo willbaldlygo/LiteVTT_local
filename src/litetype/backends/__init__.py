@@ -10,8 +10,7 @@ import sys
 if sys.platform == "darwin":
     from .macos import create_hotkey_handler, insert_text, play_sound
 elif sys.platform == "win32":
-    # The Windows backend (backends/windows.py) lands in a later step.
-    raise NotImplementedError("LiteType's Windows backend is not built yet.")
+    from .windows import create_hotkey_handler, insert_text, play_sound
 else:
     # Other platforms (e.g. the Linux test runner) have no GUI backend.
     # The shared, OS-independent parts of LiteType still import and run.

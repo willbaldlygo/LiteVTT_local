@@ -22,5 +22,8 @@ for _mod in [
     'Quartz',
     'pywhispercpp',
     'pywhispercpp.model',
+    'pynput',
+    'pynput.keyboard',
+    'pyperclip',
 ]:
     sys.modules.setdefault(_mod, MagicMock())
