@@ -1,7 +1,16 @@
 {
     "hotkey": "Fn+Ctrl",
     "model": {
-        "default_model": "ggml-base.bin",
+        "default_model": "ggml-small.en.bin",
         "use_small_en": false
-    }
+    },
+    "vocabulary": [
+        "Claude",
+        "Gemini",
+        "ChatGPT",
+        "AIWP",
+        "AIData",
+        "AAP",
+        "LiteType"
+    ]
 }

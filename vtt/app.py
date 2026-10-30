@@ -4,22 +4,34 @@ Menu bar app that coordinates audio recording, transcription,
 and text insertion using a global hotkey.
 """
 
+import collections
 import os
+import numpy as np
 import rumps
 import sys
 import threading
 import time
 
 from .audio import AudioRecorder
-from .config import load_config
-from .models import get_model_path
+from . import login_item
+from .config import load_config, save_config
+from .models import get_model_path, list_models, models_dir
 from .transcriber import Transcriber
 from .hotkeys import create_hotkey_handler
 from .text_insert import insert_text
 from AppKit import NSSound
+from ApplicationServices import AXIsProcessTrusted
 from PyObjCTools import AppHelper
 
 LOG_PATH = os.path.expanduser("~/Library/Logs/LiteType.log")
+
+# Clips quieter than this (RMS) are treated as silence and not transcribed;
+# otherwise Whisper tends to invent text like "Thank you."
+SILENCE_RMS = 0.003
+
+# Recent transcriptions are kept in memory only, never written to disk.
+HISTORY_SIZE = 5
+MENU_TEXT_LEN = 40
 
 
 class VTTApp(rumps.App):
@@ -35,8 +47,11 @@ class VTTApp(rumps.App):
         # Components
         self._audio_recorder = AudioRecorder()
         self._transcriber: Transcriber | None = None
+        self._model_name: str | None = None
         self._hotkey_handler = None
         self.config = load_config()
+        self._vocabulary = self.config.get("vocabulary", [])
+        self._history: collections.deque[str] = collections.deque(maxlen=HISTORY_SIZE)
 
         # State
         self._is_recording = False
@@ -48,13 +63,28 @@ class VTTApp(rumps.App):
 
         # Build menu
         self._status_item = rumps.MenuItem("Status: Starting...")
+        self._recent_menu = rumps.MenuItem("Recent")
+        self._model_menu = rumps.MenuItem("Model")
+        for name in list_models():
+            self._model_menu.add(rumps.MenuItem(
+                name, callback=lambda _, n=name: self._select_model(n)))
+        self._login_menu_item = rumps.MenuItem(
+            "Start at Login", callback=self._toggle_login)
+        self._login_menu_item.state = login_item.is_enabled()
+
         self.menu = [
             self._status_item,
             None,
+            rumps.MenuItem("Paste Last Transcription", callback=self._paste_last),
+            self._recent_menu,
+            self._model_menu,
+            None,
             rumps.MenuItem(f"Hotkey: {self._trigger} (hold to record)"),
+            self._login_menu_item,
             None,
             rumps.MenuItem("Quit", callback=self._quit)
         ]
+        self._populate_recent()
 
     @rumps.timer(1)
     def _init_timer(self, _):
@@ -65,6 +95,7 @@ class VTTApp(rumps.App):
 
         self._load_model()
         self._setup_hotkeys()
+        self._check_accessibility()
 
     def _load_model(self):
         """Load the Whisper model."""
@@ -78,7 +109,9 @@ class VTTApp(rumps.App):
                 return
 
             self._update_status(f"Loaded: {model_name}")
-            self._transcriber = Transcriber(model_path)
+            self._transcriber = Transcriber(model_path, self._vocabulary)
+            self._model_name = model_name
+            self._refresh_model_checks()
             self.title = "🎙️"
 
         except Exception as e:
@@ -97,6 +130,23 @@ class VTTApp(rumps.App):
         except Exception as e:
             self._update_status(f"Hotkey error")
 
+    def _check_accessibility(self):
+        """Pasting needs Accessibility permission. Without it the Cmd+V is
+        silently dropped, so say so up front instead."""
+        try:
+            trusted = AXIsProcessTrusted()
+        except Exception as e:
+            print(f"Warning: Could not check Accessibility permission: {e}")
+            return
+        print(f">>> Accessibility trusted: {bool(trusted)}")
+        if not trusted:
+            self._update_status("Needs Accessibility permission")
+            rumps.notification(
+                "LiteType",
+                "Accessibility permission needed",
+                "Add Terminal (or Python, if started at login) in System Settings > "
+                "Privacy & Security > Accessibility so LiteType can paste."
+            )
 
     def _play_sound(self, sound_name: str):
         """Play a system sound."""
@@ -147,9 +197,13 @@ class VTTApp(rumps.App):
             try:
                 print(">>> Stopping audio stream...")
                 audio = self._audio_recorder.stop_recording()
+                level = float(np.sqrt(np.mean(audio ** 2))) if audio.size else 0.0
 
-                if audio.size > 0:
-                    print(f">>> Transcribing {len(audio)} samples...")
+                if audio.size > 0 and level < SILENCE_RMS:
+                    print(f">>> Too quiet to transcribe (rms {level:.4f})")
+                    self._update_status("No speech detected")
+                elif audio.size > 0:
+                    print(f">>> Transcribing {len(audio)} samples (rms {level:.4f})...")
                     text = self._transcriber.transcribe(audio)
 
                     if text:
@@ -177,6 +231,7 @@ class VTTApp(rumps.App):
                         success = insert_text(text)
                         if success:
                             print(">>> Paste command sent successfully.")
+                            self._remember(text)
                             self._update_status(f"✓ {text[:20]}...")
                         else:
                             print(">>> Paste FAILED.")
@@ -199,6 +254,105 @@ class VTTApp(rumps.App):
 
         thread = threading.Thread(target=process, daemon=True)
         thread.start()
+
+    # --- Recent transcriptions -------------------------------------------
+
+    def _remember(self, text: str):
+        """Add a transcription to the in-memory history (newest last)."""
+        if text in self._history:
+            self._history.remove(text)
+        self._history.append(text)
+        AppHelper.callAfter(self._populate_recent)
+
+    def _populate_recent(self):
+        """Rebuild the Recent submenu. Main thread only."""
+        self._recent_menu.clear()
+        if not self._history:
+            self._recent_menu.add(rumps.MenuItem("(none yet)"))
+            return
+        # Numbered so menu titles stay unique (rumps keys items by title)
+        for i, text in enumerate(reversed(self._history), start=1):
+            label = text if len(text) <= MENU_TEXT_LEN else text[:MENU_TEXT_LEN - 1] + "…"
+            self._recent_menu.add(rumps.MenuItem(
+                f"{i}. {label}", callback=lambda _, t=text: self._repaste(t)))
+
+    def _paste_last(self, _):
+        if not self._history:
+            self._update_status("Nothing to paste yet")
+            return
+        self._repaste(self._history[-1])
+
+    def _repaste(self, text: str):
+        """Paste a previous transcription into the frontmost app."""
+        if self._is_recording or self._is_processing:
+            return
+        self._is_processing = True
+
+        def run():
+            try:
+                # Let the menu close and focus return to the target app
+                time.sleep(0.15)
+                if insert_text(text):
+                    print(">>> Re-pasted from history.")
+                    self._update_status(f"✓ {text[:20]}...")
+                else:
+                    self._update_status("Paste failed")
+            finally:
+                self._is_processing = False
+
+        threading.Thread(target=run, daemon=True).start()
+
+    # --- Model switching -------------------------------------------------
+
+    def _refresh_model_checks(self):
+        def apply():
+            for item in self._model_menu.values():
+                item.state = item.title == self._model_name
+        AppHelper.callAfter(apply)
+
+    def _select_model(self, name: str):
+        if name == self._model_name or self._is_recording or self._is_processing:
+            return
+        self._is_processing = True
+        self._set_title("⏳")
+        self._update_status(f"Loading {name}...")
+
+        def load():
+            try:
+                self._transcriber = Transcriber(
+                    os.path.join(models_dir(), name), self._vocabulary)
+                self._model_name = name
+                model_cfg = self.config.setdefault("model", {})
+                model_cfg["default_model"] = name
+                # Otherwise use_small_en would override the choice on restart
+                model_cfg["use_small_en"] = False
+                save_config(self.config)
+                self._update_status(f"Ready - Hold {self._trigger}")
+            except Exception as e:
+                print(f">>> Model load failed: {e}")
+                self._update_status("Model load failed")
+            finally:
+                self._is_processing = False
+                self._set_title("🎙️")
+                self._refresh_model_checks()
+
+        threading.Thread(target=load, daemon=True).start()
+
+    # --- Start at login --------------------------------------------------
+
+    def _toggle_login(self, sender):
+        if sender.state:
+            login_item.disable()
+        elif login_item.enable():
+            rumps.notification(
+                "LiteType",
+                "Will start at login",
+                "After your next login, allow Python under Microphone and "
+                "Accessibility in System Settings > Privacy & Security."
+            )
+        sender.state = login_item.is_enabled()
+
+    # --- UI helpers ------------------------------------------------------
 
     def _set_title(self, title: str):
         """Update the menu bar title. AppKit is not thread-safe, so this is
