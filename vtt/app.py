@@ -53,6 +53,7 @@ class VTTApp(rumps.App):
         self._hotkey_handler = None
         self.config = load_config()
         self._vocabulary = self.config.get("vocabulary", [])
+        self._audio_recorder.preferred_mics = self.config.get("microphone", [])
         self._history: collections.deque[str] = collections.deque(maxlen=HISTORY_SIZE)
 
         # State
@@ -70,6 +71,7 @@ class VTTApp(rumps.App):
         for name in list_models():
             self._model_menu.add(rumps.MenuItem(
                 name, callback=lambda _, n=name: self._select_model(n)))
+        self._mic_menu = rumps.MenuItem("Microphone")
         self._login_menu_item = rumps.MenuItem(
             "Start at Login", callback=self._toggle_login)
         self._login_menu_item.state = login_item.is_enabled()
@@ -80,6 +82,7 @@ class VTTApp(rumps.App):
             rumps.MenuItem("Paste Last Transcription", callback=self._paste_last),
             self._recent_menu,
             self._model_menu,
+            self._mic_menu,
             None,
             rumps.MenuItem(f"Hotkey: {self._trigger} (hold to record)"),
             self._login_menu_item,
@@ -87,6 +90,7 @@ class VTTApp(rumps.App):
             rumps.MenuItem("Quit", callback=self._quit)
         ]
         self._populate_recent()
+        self._populate_mics()
 
     @rumps.timer(1)
     def _init_timer(self, _):
@@ -342,6 +346,52 @@ class VTTApp(rumps.App):
                 self._refresh_model_checks()
 
         threading.Thread(target=load, daemon=True).start()
+
+    # --- Microphone choice -----------------------------------------------
+
+    def _populate_mics(self):
+        """Rebuild the Microphone submenu. Main thread only."""
+        for key in list(self._mic_menu.keys()):
+            del self._mic_menu[key]
+
+        preferred = self._audio_recorder.preferred_mics
+        current = preferred[0].lower() if preferred else None
+
+        default_item = rumps.MenuItem(
+            "System Default", callback=lambda _: self._select_mic(None))
+        default_item.state = current is None
+        self._mic_menu.add(default_item)
+        self._mic_menu.add(rumps.separator)
+        for name in self._audio_recorder.list_input_devices():
+            item = rumps.MenuItem(name, callback=lambda _, n=name: self._select_mic(n))
+            item.state = current is not None and current in name.lower()
+            self._mic_menu.add(item)
+        self._mic_menu.add(rumps.separator)
+        self._mic_menu.add(rumps.MenuItem("Refresh List", callback=self._refresh_mics))
+
+    def _select_mic(self, name: str | None):
+        """Make a mic the first choice (None = follow the system default).
+        Other saved preferences stay as fallbacks."""
+        if name is None:
+            preferred = []
+        else:
+            preferred = [name] + [p for p in self._audio_recorder.preferred_mics if p != name]
+        self._audio_recorder.preferred_mics = preferred
+        self.config["microphone"] = preferred
+        save_config(self.config)
+        self._populate_mics()
+        self._update_status(f"Mic: {name or 'System Default'}")
+
+    def _refresh_mics(self, _):
+        # Re-scanning tears down PortAudio, so never while a stream is open
+        if self._is_recording or self._is_processing:
+            self._update_status("Busy - try again in a moment")
+            return
+        try:
+            self._audio_recorder.refresh_devices()
+        except Exception as e:
+            print(f"Warning: Could not refresh audio devices: {e}")
+        self._populate_mics()
 
     # --- Start at login --------------------------------------------------
 

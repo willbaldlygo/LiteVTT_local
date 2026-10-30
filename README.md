@@ -14,6 +14,7 @@ A lightweight, unobtrusive, 100% local voice dictation tool for macOS. Hold a ho
 - **Custom vocabulary** — teach it names and acronyms it should spell correctly
 - **Menu bar recovery** — re-paste your last few transcriptions (kept in memory only, never saved)
 - **Model switcher** — swap Whisper models from the menu bar
+- **Microphone choice** — pick which mic LiteType uses, independent of the macOS default
 - **Start at login** — runs quietly in the background, no Terminal window
 - **Voice shutdown** — say *"LiteType shut down"* while recording to quit hands-free
 - **macOS 12.0+**
@@ -80,9 +81,12 @@ Edit `config.json` to customise behaviour:
 | `hotkey` | `"Fn+Ctrl"` | Modifier keys to hold while recording. Supported keys: `Fn`, `Ctrl`, `Shift`, `Opt`, `Alt`, `Cmd`. |
 | `model.default_model` | `"ggml-base.bin"` | Which model file to load first. |
 | `model.use_small_en` | `false` | Set to `true` to prefer the Small English model when available. |
+| `microphone` | `[]` | Preferred mics in priority order, matched by part of the name, e.g. `["RODE", "MacBook Pro Microphone"]`. The first one connected is used; if none are, LiteType uses the macOS default input. Empty means always use the macOS default. |
 | `vocabulary` | `[]` | Words Whisper should spell correctly, e.g. `["Claude", "AIWP"]`. Restart LiteType after editing. |
 
-Choosing a model from the menu bar's **Model** submenu updates `model.default_model` for you.
+Choosing a model from the menu bar's **Model** submenu updates `model.default_model` for you. Choosing a mic from the **Microphone** submenu moves it to the front of `microphone`. Use **Refresh List** there after plugging in a new mic.
+
+> **Bluetooth earbuds:** macOS makes newly connected earbuds your default *input* as well as output. Their mics are poor, and using them switches the earbuds into low-quality headset mode. Choosing another mic in LiteType avoids both.
 
 **Hotkey examples:**
 

@@ -118,3 +118,72 @@ class TestStartStopIntegration:
         audio = recorder.stop_recording()
         # 0.1s should resample down to ~1600 samples at 16kHz.
         assert abs(len(audio) - 1600) <= 1
+
+
+# ---------------------------------------------------------------------------
+# Choosing which microphone to record from
+# ---------------------------------------------------------------------------
+
+DEVICES = [
+    {'name': "Will's Earbuds", 'max_input_channels': 1},
+    {'name': 'MacBook Pro Speakers', 'max_input_channels': 0},
+    {'name': 'RODE Podcaster v2', 'max_input_channels': 1},
+    {'name': 'MacBook Pro Microphone', 'max_input_channels': 1},
+]
+
+
+class TestMicrophoneSelection:
+    def test_no_preference_uses_system_default_without_rescanning(self):
+        recorder = AudioRecorder()
+        with patch('vtt.audio.sd._terminate') as mock_terminate:
+            assert recorder._resolve_device() is None
+        mock_terminate.assert_not_called()
+
+    def test_preferred_mic_matched_by_case_insensitive_substring(self):
+        recorder = AudioRecorder(["rode"])
+        with patch('vtt.audio.sd.query_devices', return_value=DEVICES):
+            assert recorder._resolve_device() == 2
+
+    def test_falls_back_through_preferences_in_order(self):
+        recorder = AudioRecorder(["Yeti", "MacBook Pro Microphone", "RODE"])
+        with patch('vtt.audio.sd.query_devices', return_value=DEVICES), \
+             patch('vtt.audio.sd._terminate'), patch('vtt.audio.sd._initialize'):
+            assert recorder._resolve_device() == 3
+
+    def test_output_only_devices_never_chosen(self):
+        recorder = AudioRecorder(["MacBook Pro"])
+        with patch('vtt.audio.sd.query_devices', return_value=DEVICES):
+            assert recorder._resolve_device() == 3   # the mic, not the speakers
+
+    def test_missing_mic_rescans_once_then_uses_system_default(self):
+        recorder = AudioRecorder(["Yeti"])
+        with patch('vtt.audio.sd.query_devices', return_value=DEVICES), \
+             patch('vtt.audio.sd._terminate') as mock_terminate, \
+             patch('vtt.audio.sd._initialize') as mock_initialize:
+            assert recorder._resolve_device() is None
+        mock_terminate.assert_called_once()
+        mock_initialize.assert_called_once()
+
+    def test_mic_plugged_in_after_launch_found_after_rescan(self):
+        recorder = AudioRecorder(["Yeti"])
+        after = DEVICES + [{'name': 'Blue Yeti', 'max_input_channels': 2}]
+        with patch('vtt.audio.sd.query_devices', side_effect=[DEVICES, after]), \
+             patch('vtt.audio.sd._terminate'), patch('vtt.audio.sd._initialize'):
+            assert recorder._resolve_device() == 4
+
+    def test_stream_opened_on_chosen_device(self):
+        recorder = AudioRecorder(["rode"])
+
+        def query(device=None, kind=None):
+            return {'name': 'RODE Podcaster v2', 'default_samplerate': 96000} if kind else DEVICES
+
+        with patch('vtt.audio.sd.query_devices', side_effect=query), \
+             patch('vtt.audio.sd.InputStream', return_value=MagicMock()) as mock_input_stream:
+            recorder.start_recording()
+        assert mock_input_stream.call_args.kwargs['device'] == 2
+        assert mock_input_stream.call_args.kwargs['samplerate'] == 96000
+
+    def test_list_input_devices_excludes_outputs(self):
+        with patch('vtt.audio.sd.query_devices', return_value=DEVICES):
+            names = AudioRecorder.list_input_devices()
+        assert names == ["Will's Earbuds", 'RODE Podcaster v2', 'MacBook Pro Microphone']
