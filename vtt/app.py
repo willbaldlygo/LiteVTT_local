@@ -266,7 +266,10 @@ class VTTApp(rumps.App):
 
     def _populate_recent(self):
         """Rebuild the Recent submenu. Main thread only."""
-        self._recent_menu.clear()
+        # Not .clear(): rumps only creates the submenu on first add, so
+        # clearing an item with no children crashes
+        for key in list(self._recent_menu.keys()):
+            del self._recent_menu[key]
         if not self._history:
             self._recent_menu.add(rumps.MenuItem("(none yet)"))
             return
