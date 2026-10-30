@@ -16,7 +16,10 @@ class AudioRecorder:
     SAMPLE_RATE = 16000  # Whisper expects 16kHz
     CHANNELS = 1  # Mono
 
-    def __init__(self):
+    def __init__(self, preferred_mics: list[str] | None = None):
+        # Device names in priority order, matched case-insensitively by
+        # substring. Empty means follow the system default input.
+        self.preferred_mics = list(preferred_mics or [])
         self._recording = False
         self._audio_buffer: list[np.ndarray] = []
         self._stream: Optional[sd.InputStream] = None
@@ -32,6 +35,49 @@ class AudioRecorder:
             with self._lock:
                 self._audio_buffer.append(indata.copy())
 
+    @staticmethod
+    def refresh_devices() -> None:
+        """Make PortAudio re-scan audio devices (takes a few ms). It only
+        enumerates once at start-up otherwise, so it misses mics plugged in
+        later. Never call this while a stream is open."""
+        sd._terminate()
+        sd._initialize()
+
+    @staticmethod
+    def list_input_devices() -> list[str]:
+        """Names of all devices that can record, in PortAudio's order."""
+        try:
+            return [d['name'] for d in sd.query_devices() if d['max_input_channels'] > 0]
+        except Exception as e:
+            print(f"Warning: Could not list input devices: {e}")
+            return []
+
+    def _find_preferred_device(self) -> Optional[int]:
+        """Index of the first connected preferred mic, or None."""
+        try:
+            devices = list(sd.query_devices())
+        except Exception as e:
+            print(f"Warning: Could not list input devices: {e}")
+            return None
+        for wanted in self.preferred_mics:
+            for index, d in enumerate(devices):
+                if d['max_input_channels'] > 0 and wanted.lower() in d['name'].lower():
+                    return index
+        return None
+
+    def _resolve_device(self) -> Optional[int]:
+        """Pick the input device to record from. None = system default."""
+        if not self.preferred_mics:
+            return None
+        device = self._find_preferred_device()
+        if device is None:
+            # Maybe it was plugged in after launch -- rescan once
+            self.refresh_devices()
+            device = self._find_preferred_device()
+        if device is None:
+            print(f"Preferred mic(s) {self.preferred_mics} not connected; using system default.")
+        return device
+
     def _open_stream(self) -> sd.InputStream:
         """Open a new input stream at the current default device's own
         native sample rate, rather than forcing SAMPLE_RATE on the
@@ -40,14 +86,17 @@ class AudioRecorder:
         Value" error, especially right after the OS has changed what the
         default input device is. stop_recording() resamples to
         SAMPLE_RATE in software afterwards."""
+        device = self._resolve_device()
         try:
-            device_info = sd.query_devices(kind='input')
+            device_info = sd.query_devices(device, kind='input')
             self._device_sample_rate = int(device_info['default_samplerate'])
+            print(f">>> Mic: {device_info.get('name', '?')}")
         except Exception as e:
-            print(f"Warning: Could not query default input device samplerate: {e}")
+            print(f"Warning: Could not query input device samplerate: {e}")
             self._device_sample_rate = self.SAMPLE_RATE
 
         stream = sd.InputStream(
+            device=device,
             samplerate=self._device_sample_rate,
             channels=self.CHANNELS,
             dtype='float32',
@@ -84,8 +133,7 @@ class AudioRecorder:
             print(f"Error starting recording stream: {first_error}")
             print("Refreshing audio devices and retrying once...")
             try:
-                sd._terminate()
-                sd._initialize()
+                self.refresh_devices()
                 self._stream = self._open_stream()
                 self._recording = True
             except Exception as retry_error:
