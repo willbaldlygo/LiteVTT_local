@@ -11,6 +11,10 @@ A lightweight, unobtrusive, 100% local voice dictation tool for macOS. Hold a ho
 - **System-wide dictation** triggered by a customisable hotkey (default: `Fn+Ctrl`)
 - **Powered by Whisper** (via `whisper.cpp`) — high accuracy, runs entirely on-device
 - **Clipboard safe** — saves and restores your clipboard around every paste
+- **Custom vocabulary** — teach it names and acronyms it should spell correctly
+- **Menu bar recovery** — re-paste your last few transcriptions (kept in memory only, never saved)
+- **Model switcher** — swap Whisper models from the menu bar
+- **Start at login** — runs quietly in the background, no Terminal window
 - **Voice shutdown** — say *"LiteType shut down"* while recording to quit hands-free
 - **macOS 12.0+**
 
@@ -76,6 +80,9 @@ Edit `config.json` to customise behaviour:
 | `hotkey` | `"Fn+Ctrl"` | Modifier keys to hold while recording. Supported keys: `Fn`, `Ctrl`, `Shift`, `Opt`, `Alt`, `Cmd`. |
 | `model.default_model` | `"ggml-base.bin"` | Which model file to load first. |
 | `model.use_small_en` | `false` | Set to `true` to prefer the Small English model when available. |
+| `vocabulary` | `[]` | Words Whisper should spell correctly, e.g. `["Claude", "AIWP"]`. Restart LiteType after editing. |
+
+Choosing a model from the menu bar's **Model** submenu updates `model.default_model` for you.
 
 **Hotkey examples:**
 
@@ -86,6 +93,16 @@ Edit `config.json` to customise behaviour:
 ```
 
 > The hotkey must be a combination of modifier keys only (Fn, Ctrl, Shift, Opt/Alt, Cmd). Regular keys like letters or numbers are not supported.
+
+---
+
+## Start at Login
+
+Choose **Start at Login** in the menu bar menu. From your next login, LiteType starts in the background with no Terminal window. Choose it again to turn it off.
+
+When started this way, macOS asks for permissions on behalf of **Python** rather than Terminal. Allow Python under System Settings → Privacy & Security → **Microphone** and **Accessibility**. LiteType shows "Needs Accessibility permission" in its menu if pasting isn't allowed yet.
+
+Logs are written to `~/Library/Logs/LiteType.log`.
 
 ---
 
@@ -101,7 +118,7 @@ Edit `config.json` to customise behaviour:
 
 **Microphone not working** — open System Settings → Privacy & Security → Microphone and ensure Terminal (or your terminal app) is listed and enabled.
 
-**Text not pasting** — open System Settings → Privacy & Security → Accessibility and ensure Terminal is listed and enabled.
+**Text not pasting** — open System Settings → Privacy & Security → Accessibility and ensure Terminal (or Python, if you use Start at Login) is listed and enabled. If a paste misses, use **Paste Last Transcription** in the menu bar menu.
 
 ---
 

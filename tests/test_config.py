@@ -43,3 +43,18 @@ class TestLoadConfig:
             result = load_config()
         assert result["model"]["use_small_en"] is True
         assert result["hotkey"] == "Fn+Ctrl"
+
+
+class TestSaveConfig:
+    def test_round_trip(self, tmp_path, monkeypatch):
+        import vtt.config as cfg
+        monkeypatch.setattr(cfg, "CONFIG_PATH", str(tmp_path / "config.json"))
+        data = {"hotkey": "Fn+Ctrl", "vocabulary": ["Claude"]}
+        assert cfg.save_config(data) is True
+        assert cfg.load_config() == data
+
+    def test_write_error_returns_false(self, monkeypatch, capsys):
+        import vtt.config as cfg
+        monkeypatch.setattr(cfg, "CONFIG_PATH", "/nonexistent/dir/config.json")
+        assert cfg.save_config({}) is False
+        assert "Warning" in capsys.readouterr().out

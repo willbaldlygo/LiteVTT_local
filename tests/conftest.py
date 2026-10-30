@@ -20,6 +20,8 @@ for _mod in [
     'rumps',
     'AppKit',
     'Quartz',
+    'ApplicationServices',
+    'PyObjCTools',
     'pywhispercpp',
     'pywhispercpp.model',
 ]:
