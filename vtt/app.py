@@ -26,8 +26,10 @@ from PyObjCTools import AppHelper
 LOG_PATH = os.path.expanduser("~/Library/Logs/LiteType.log")
 
 # Clips quieter than this (RMS) are treated as silence and not transcribed;
-# otherwise Whisper tends to invent text like "Thank you."
-SILENCE_RMS = 0.003
+# otherwise Whisper tends to invent text like "Thank you." Kept low because
+# Bluetooth headset mics are quiet: a spoken "Hello." measured 0.0038.
+# Near-silence that gets past this is still caught by clean_transcript().
+SILENCE_RMS = 0.001
 
 # Recent transcriptions are kept in memory only, never written to disk.
 HISTORY_SIZE = 5
