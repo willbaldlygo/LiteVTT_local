@@ -8,6 +8,47 @@ import os
 import subprocess
 import time
 
+from Quartz import (
+    CGEventCreateKeyboardEvent,
+    CGEventPost,
+    CGEventSetFlags,
+    CGEventSourceCreate,
+    kCGEventFlagMaskCommand,
+    kCGEventSourceStatePrivate,
+    kCGHIDEventTap,
+)
+
+# Virtual keycode for the "V" key (ANSI layout).
+KEYCODE_V = 9
+
+# How long to leave our text on the clipboard after sending Cmd+V before
+# putting the user's original clipboard back. The target app reads the
+# pasteboard whenever it gets round to handling the keystroke, not when we
+# send it -- busy apps (browsers, Electron apps) can take well over 100ms,
+# and if we restore first they paste the *old* clipboard instead.
+PASTE_SETTLE_SECONDS = 0.6
+
+# Guard against pbcopy/pbpaste ever hanging and wedging the app.
+SUBPROCESS_TIMEOUT = 2
+
+
+def _send_cmd_v() -> None:
+    """Post a Cmd+V keystroke directly via Quartz.
+
+    Uses a private event source and sets the flags explicitly, so modifier
+    keys the user is still physically holding (e.g. Fn or Ctrl from the
+    record hotkey) are not merged into the paste shortcut.
+    """
+    source = CGEventSourceCreate(kCGEventSourceStatePrivate)
+    key_down = CGEventCreateKeyboardEvent(source, KEYCODE_V, True)
+    key_up = CGEventCreateKeyboardEvent(source, KEYCODE_V, False)
+    if key_down is None or key_up is None:
+        raise RuntimeError("Could not create keyboard events")
+    CGEventSetFlags(key_down, kCGEventFlagMaskCommand)
+    CGEventSetFlags(key_up, kCGEventFlagMaskCommand)
+    CGEventPost(kCGHIDEventTap, key_down)
+    CGEventPost(kCGHIDEventTap, key_up)
+
 
 def insert_text(text: str) -> bool:
     """Insert text at the current cursor position.
@@ -29,7 +70,7 @@ def insert_text(text: str) -> bool:
         result = subprocess.run(
             ['pbpaste'],
             capture_output=True,
-            timeout=2
+            timeout=SUBPROCESS_TIMEOUT
         )
         if result.returncode == 0:
             original_clipboard = result.stdout
@@ -43,7 +84,7 @@ def insert_text(text: str) -> bool:
             stdin=subprocess.PIPE,
             env={**os.environ, 'LANG': 'en_US.UTF-8'}
         )
-        process.communicate(text.encode('utf-8'))
+        process.communicate(text.encode('utf-8'), timeout=SUBPROCESS_TIMEOUT)
 
         if process.returncode != 0:
             print("Failed to copy to clipboard")
@@ -52,25 +93,10 @@ def insert_text(text: str) -> bool:
         # Small delay to ensure clipboard is updated and app is ready
         time.sleep(0.2)
 
-        # Paste using AppleScript and System Events
-        script = '''
-        tell application "System Events"
-            keystroke "v" using command down
-        end tell
-        '''
+        _send_cmd_v()
 
-        result = subprocess.run(
-            ['osascript', '-e', script],
-            capture_output=True,
-            text=True
-        )
-
-        if result.returncode != 0:
-            print(f"Failed to paste: {result.stderr}")
-            return False
-
-        # Small delay to let the paste complete before restoring
-        time.sleep(0.1)
+        # Let the target app actually read the clipboard before restoring
+        time.sleep(PASTE_SETTLE_SECONDS)
 
         return True
 
@@ -86,6 +112,6 @@ def insert_text(text: str) -> bool:
                     ['pbcopy'],
                     stdin=subprocess.PIPE
                 )
-                restore.communicate(original_clipboard)
+                restore.communicate(original_clipboard, timeout=SUBPROCESS_TIMEOUT)
             except Exception as e:
                 print(f"Warning: Could not restore clipboard: {e}")

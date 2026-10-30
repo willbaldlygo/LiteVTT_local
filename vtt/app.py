@@ -4,7 +4,9 @@ Menu bar app that coordinates audio recording, transcription,
 and text insertion using a global hotkey.
 """
 
+import os
 import rumps
+import sys
 import threading
 import time
 
@@ -15,6 +17,9 @@ from .transcriber import Transcriber
 from .hotkeys import create_hotkey_handler
 from .text_insert import insert_text
 from AppKit import NSSound
+from PyObjCTools import AppHelper
+
+LOG_PATH = os.path.expanduser("~/Library/Logs/LiteType.log")
 
 
 class VTTApp(rumps.App):
@@ -107,7 +112,7 @@ class VTTApp(rumps.App):
             return
 
         self._is_recording = True
-        self.title = "🔴 REC"
+        self._set_title("🔴 REC")
         self._play_sound("Tink")
         self._update_status("Recording...")
 
@@ -133,7 +138,7 @@ class VTTApp(rumps.App):
 
         self._is_recording = False
         self._is_processing = True
-        self.title = "⏳ PROC"
+        self._set_title("⏳ PROC")
         self._play_sound("Pop")
         self._update_status("Transcribing...")
 
@@ -187,7 +192,7 @@ class VTTApp(rumps.App):
 
             finally:
                 self._is_processing = False
-                self.title = "🎙️"
+                self._set_title("🎙️")
                 time.sleep(2)
                 if not self._is_recording and not self._is_processing:
                     self._update_status(f"Ready - Hold {self._trigger}")
@@ -195,12 +200,22 @@ class VTTApp(rumps.App):
         thread = threading.Thread(target=process, daemon=True)
         thread.start()
 
+    def _set_title(self, title: str):
+        """Update the menu bar title. AppKit is not thread-safe, so this is
+        always marshalled onto the main thread -- touching the status item
+        from the transcription thread can wedge the whole app."""
+        def apply():
+            self.title = title
+        AppHelper.callAfter(apply)
+
     def _update_status(self, status: str):
-        """Update the status menu item."""
-        try:
-            self._status_item.title = f"Status: {status}"
-        except Exception as e:
-            print(f"Warning: Failed to update status: {e}")
+        """Update the status menu item (on the main thread, see _set_title)."""
+        def apply():
+            try:
+                self._status_item.title = f"Status: {status}"
+            except Exception as e:
+                print(f"Warning: Failed to update status: {e}")
+        AppHelper.callAfter(apply)
 
     def _quit(self, _):
         """Quit the application."""
@@ -209,8 +224,48 @@ class VTTApp(rumps.App):
         rumps.quit_application()
 
 
+class _TimestampedTee:
+    """Mirror stdout/stderr into a timestamped log file, so failures can be
+    diagnosed after the launcher's Terminal window is gone."""
+
+    def __init__(self, stream, log_file):
+        self._stream = stream
+        self._log = log_file
+        self._at_line_start = True
+
+    def write(self, data):
+        self._stream.write(data)
+        try:
+            for chunk in data.splitlines(keepends=True):
+                if self._at_line_start:
+                    self._log.write(time.strftime("%Y-%m-%d %H:%M:%S "))
+                self._log.write(chunk)
+                self._at_line_start = chunk.endswith("\n")
+            self._log.flush()
+        except Exception:
+            pass
+        return len(data)
+
+    def flush(self):
+        self._stream.flush()
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+
+def _start_logging():
+    try:
+        log_file = open(LOG_PATH, "a", encoding="utf-8")
+    except OSError as e:
+        print(f"Warning: Could not open log file {LOG_PATH}: {e}")
+        return
+    sys.stdout = _TimestampedTee(sys.stdout, log_file)
+    sys.stderr = _TimestampedTee(sys.stderr, log_file)
+
+
 def main():
     """Entry point for the application."""
+    _start_logging()
     print("Starting LiteType...")
     print("=" * 40)
     print("Menu bar icon: VTT (or 🎙️ when ready)")
