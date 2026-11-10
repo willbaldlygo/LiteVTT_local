@@ -39,7 +39,7 @@ def main():
     print("LiteType Model Downloader")
     print("=========================")
     print("1. Base Model (~140MB) - Faster, good for standard dictation")
-    print("2. Small English Model (~460MB) - Slower, much higher accuracy")
+    print("2. Small English Model (~460MB) - Much more accurate (recommended)")
     print("3. Both")
     
     choice = input("\nSelect models to download (1-3): ").strip()
