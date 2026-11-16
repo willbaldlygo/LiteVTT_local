@@ -95,7 +95,7 @@ Edit `config.json` to customise behaviour:
 | `model.default_model` | `"ggml-base.bin"` | Which model file to load first. |
 | `model.use_small_en` | `false` | Set to `true` to prefer the Small English model when available. |
 | `microphone` | `[]` | Preferred mics in priority order, matched by part of the name, e.g. `["RODE", "MacBook Pro Microphone"]`. The first one connected is used; if none are, LiteType uses the macOS default input. Empty means always use the macOS default. |
-| `vocabulary` | `[]` | Words Whisper should spell correctly, e.g. `["Claude", "AIWP"]`. Restart LiteType after editing. |
+| `vocabulary` | `[]` | Words Whisper should spell correctly. See [Custom vocabulary](#custom-vocabulary). |
 
 Choosing a model from the menu bar's **Model** submenu updates `model.default_model` for you. Choosing a mic from the **Microphone** submenu moves it to the front of `microphone`. Use **Refresh List** there after plugging in a new mic.
 
@@ -110,6 +110,18 @@ Choosing a model from the menu bar's **Model** submenu updates `model.default_mo
 ```
 
 > The hotkey must be a combination of modifier keys only (Fn, Ctrl, Shift, Opt/Alt, Cmd). Regular keys like letters or numbers are not supported.
+
+---
+
+## Custom vocabulary
+
+Whisper sometimes misspells names, acronyms and specialist terms. List the words you use often in `config.json`, and LiteType will nudge Whisper towards spelling them your way:
+
+```json
+"vocabulary": ["Priya", "Kubernetes", "Acme Ltd", "OKRs"]
+```
+
+Good candidates are names of people, places, products and organisations, acronyms, and jargon from your field. Keep the list fairly short (a few dozen words at most); restart LiteType after editing.
 
 ---
 

@@ -10,7 +10,7 @@ class TestBuildPrompt:
         assert build_prompt(None) == ""
 
     def test_words_joined_into_glossary(self):
-        assert build_prompt(["Claude", "AIWP"]) == "Glossary: Claude, AIWP."
+        assert build_prompt(["Acme", "Kubernetes"]) == "Glossary: Acme, Kubernetes."
 
     def test_blank_entries_ignored(self):
         assert build_prompt(["Claude", "  ", ""]) == "Glossary: Claude."
@@ -36,9 +36,9 @@ class TestCleanTranscript:
         assert clean_transcript(text) == text
 
     def test_echoed_prompt_dropped(self):
-        prompt = build_prompt(["Claude", "AIWP"])
-        assert clean_transcript("Glossary: Claude, AIWP.", prompt) == ""
+        prompt = build_prompt(["Acme", "Kubernetes"])
+        assert clean_transcript("Glossary: Acme, Kubernetes.", prompt) == ""
 
     def test_text_mentioning_vocab_kept(self):
-        prompt = build_prompt(["Claude", "AIWP"])
-        assert clean_transcript("Claude helps with AIWP.", prompt) == "Claude helps with AIWP."
+        prompt = build_prompt(["Acme", "Kubernetes"])
+        assert clean_transcript("Acme runs on Kubernetes.", prompt) == "Acme runs on Kubernetes."
